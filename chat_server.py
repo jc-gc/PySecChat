@@ -1,18 +1,21 @@
 import datetime
+import queue
 import socket
 import threading
 import time
 import tkinter as tk
 
+sendqueue = queue.Queue()
+
 cliListWin = tk.Tk()
-cliListWin.title("Connected Clients")
+cliListWin.title("Clients")
 
 cliListFrame = tk.Frame(cliListWin)
 clistr = tk.StringVar()  # For the messages to be sent.
 clistr.set("")
 scrollbar = tk.Scrollbar(cliListFrame)  # To navigate through past messages.
 # Following will contain the messages.
-cliListbox = tk.Listbox(cliListFrame, height=15, width=25, yscrollcommand=scrollbar.set)
+cliListbox = tk.Listbox(cliListFrame, height=15, width=35, yscrollcommand=scrollbar.set)
 cliListbox.configure(bg="#333333", fg='#ffffff')
 scrollbar.configure(command=cliListbox.yview, bg='#000000')
 scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -83,15 +86,23 @@ def handleclient(conn, cliaddr):
 
             if len(full_msg) - HEADERLEN == msglen:
                 print(f'<{cliaddr[0]}> {sendername}: {full_msg[HEADERLEN:]}')
-                broadcast((conn, cliaddr), full_msg[HEADERLEN:], sendername)
+                msgtosend = full_msg
+                sendqueue.put((msgtosend, conn))
+                # broadcast((conn, cliaddr), full_msg[HEADERLEN:], sendername)
                 # addMsg(f'<{client[1][0]}> {sendername}: {full_msg[HEADERLEN:]}')
                 new_msg = True
                 full_msg = ''
 
 
+def handleSendQueue():
+    while 1:
+        msg = sendqueue.get()
+        if msg != None:
+            broadcast(msg[1], msg[0][HEADERLEN:], msg[0][4:HEADERLEN])
+
 def broadcast(source, message, name):
     for client in clients:
-        if client[0] != source[0]:
+        if client[0] != source:
             client[0].sendall(setupMsg(message, name))
 
 
@@ -128,6 +139,11 @@ y = threading.Thread(target=getInput)
 y.setDaemon(True)
 threads.append(y)
 y.start()
+
+sendthread = threading.Thread(target=handleSendQueue)
+sendthread.setDaemon(True)
+threads.append(sendthread)
+sendthread.start()
 
 print('Running')
 
