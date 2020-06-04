@@ -1,9 +1,8 @@
 """Script for Tkinter GUI chat client."""
-from socket import AF_INET, socket, SOCK_STREAM, SHUT_RDWR
+from socket import AF_INET, socket, SOCK_STREAM
 from threading import Thread
 import tkinter
 import atexit
-
 
 def receive():
     """Handles receiving of messages."""
@@ -14,25 +13,25 @@ def receive():
             try:
                 msg = client_socket.recv(32)
                 if new_msg:
-                    # print("new msg len:",msg[:HEADERSIZE])
+                    #print("new msg len:",msg[:HEADERSIZE])
                     msglen = int(msg[:3])
                     SENDERNAME = msg[4:HEADERSIZE].decode('utf-8')
                     SENDERNAME = "<" + SENDERNAME.strip(' ') + "> "
 
                     new_msg = False
-
+                
                 full_msg += msg.decode("utf-8")
-
-                if len(full_msg) - HEADERSIZE == msglen:
-                    # print("full msg recvd")
+                
+                if len(full_msg)-HEADERSIZE == msglen:
+                    #print("full msg recvd")
                     msg_list.insert(tkinter.END, SENDERNAME + full_msg[HEADERSIZE:])
+                    msg_list.yview(tkinter.END)     
                     new_msg = True
                     full_msg = ''
 
             except OSError:  # Possibly client has left the chat.
                 break
         print("Exiting thread")
-
 
 def send(event=None):
     """Handles sending of messages."""
@@ -45,10 +44,19 @@ def send(event=None):
     if msg == "{quit}":
         client_socket.close()
         top.quit()
+    msg_list.yview(tkinter.END)    
 
-
+def change_name(event=None):
+    name = my_msg.get()
+    if len(name) > 12:
+        msg_list.insert(tkinter.END, "Error: Name too long")
+        return
+    global NAME
+    NAME = name
+    msg_list.insert(tkinter.END, "Name change succesful")
+        
 def add_header(message):
-    msg = f'{len(message):<{3}} {NAME:<{HEADERSIZE - 4}}' + message
+    msg = f'{len(message):<{3}} {NAME:<{HEADERSIZE-4}}' + message
     return msg
 
 
@@ -60,9 +68,8 @@ def exit_func():
         pass
     exit()
 
-
 top = tkinter.Tk()
-top.title("Sexy Chat Room")
+top.title("Chat Room")
 
 messages_frame = tkinter.Frame(top)
 my_msg = tkinter.StringVar()  # For the messages to be sent.
@@ -70,29 +77,38 @@ my_msg.set("")
 scrollbar = tkinter.Scrollbar(messages_frame)  # To navigate through past messages.
 # Following will contain the messages.
 msg_list = tkinter.Listbox(messages_frame, height=15, width=50, yscrollcommand=scrollbar.set)
+scrollbar.configure(command = msg_list.yview)
 scrollbar.pack(side=tkinter.RIGHT, fill=tkinter.Y)
 msg_list.pack(side=tkinter.LEFT, fill=tkinter.BOTH)
+msg_list.configure(yscrollcommand = scrollbar.set)
+
+
 msg_list.pack()
 messages_frame.pack()
 
 entry_field = tkinter.Entry(top, textvariable=my_msg)
 entry_field.bind("<Return>", send)
 entry_field.pack()
+
 send_button = tkinter.Button(top, text="Send", command=send)
+send_button.pack()
+
+send_button = tkinter.Button(top, text="Change Name", command=change_name)
 send_button.pack()
 
 exit_button = tkinter.Button(top, text="Exit", command=top.destroy)
 exit_button.pack()
 
+
 top.protocol("WM_DELETE_WINDOW", top.destroy)
 
-# ----Now comes the sockets part----
-# HOST = input('Enter host: ')
-# PORT = input('Enter port: ')
+#----Now comes the sockets part----
+#HOST = input('Enter host: ')
+#PORT = input('Enter port: ')
 HOST = "2.25.19.181"
 PORT = 1252
-# NAME = input("Enter your username")
-NAME = "pu55y boi"
+#NAME = input("Enter your username")
+NAME = "Client A"
 if not PORT:
     PORT = 33000
 else:
@@ -101,6 +117,7 @@ else:
 BUFSIZ = 1024
 HEADERSIZE = 16
 ADDR = (HOST, PORT)
+
 
 client_socket = socket(AF_INET, SOCK_STREAM)
 client_socket.connect(ADDR)
@@ -118,4 +135,4 @@ receive_thread = Thread(target=receive)
 receive_thread.setDaemon(True)
 receive_thread.start()
 tkinter.mainloop()  # Starts GUI execution.
-# exit_func()
+#exit_func()
