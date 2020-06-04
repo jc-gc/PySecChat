@@ -1,11 +1,13 @@
+#!/usr/bin/env python
 """Script for Tkinter GUI chat client."""
 import atexit
 import tkinter
 import select
+from pygame import mixer
+
 from random import randint
 from socket import AF_INET, socket, SOCK_STREAM, IPPROTO_TCP, SOL_SOCKET, SO_KEEPALIVE, TCP_KEEPIDLE, TCP_KEEPINTVL, TCP_KEEPCNT
 from threading import Thread
-
 
 HEADERLEN = 16
 NAME = f'guiCl-{randint(100, 999)}'
@@ -40,6 +42,7 @@ def receive():
                 if len(full_msg) - HEADERLEN == msglen:
                     msg_list.insert(tkinter.END, sendername + full_msg[HEADERLEN:])
                     msg_list.yview(tkinter.END)
+                    #playsound('bing.wav')
                     new_msg = True
                     full_msg = ''
 
