@@ -13,7 +13,8 @@ clistr.set("")
 scrollbar = tk.Scrollbar(cliListFrame)  # To navigate through past messages.
 # Following will contain the messages.
 cliListbox = tk.Listbox(cliListFrame, height=15, width=25, yscrollcommand=scrollbar.set)
-scrollbar.configure(command=cliListbox.yview)
+cliListbox.configure(bg="#333333", fg='#ffffff')
+scrollbar.configure(command=cliListbox.yview, bg='#000000')
 scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 cliListbox.pack(side=tk.LEFT, fill=tk.BOTH)
 cliListbox.configure(yscrollcommand=scrollbar.set)
@@ -75,14 +76,15 @@ def handleclient(conn, cliaddr):
         if data:
             if new_msg:
                 msglen = int(data[:3])
-                sendername = data[4:HEADERLEN].decode('utf-8')
+                sendername = data[4:HEADERLEN].decode('utf-8').strip(' ')
                 new_msg = False
 
             full_msg += data.decode("utf-8")
 
             if len(full_msg) - HEADERLEN == msglen:
-                print(f'<{cliaddr[0]}> {sendername.strip(" ")}: {full_msg[HEADERLEN:]}')
+                print(f'<{cliaddr[0]}> {sendername}: {full_msg[HEADERLEN:]}')
                 broadcast((conn, cliaddr), full_msg[HEADERLEN:], sendername)
+                # addMsg(f'<{client[1][0]}> {sendername}: {full_msg[HEADERLEN:]}')
                 new_msg = True
                 full_msg = ''
 
@@ -111,7 +113,6 @@ def getInput():
             sock.close()
             exit()
 
-
 def updateCliList():
     cliListbox.delete(0, tk.END)
     for client in clients:
@@ -119,9 +120,12 @@ def updateCliList():
 
 
 x = threading.Thread(target=acceptConnections)
+x.setDaemon(True)
 threads.append(x)
 x.start()
+
 y = threading.Thread(target=getInput)
+y.setDaemon(True)
 threads.append(y)
 y.start()
 
