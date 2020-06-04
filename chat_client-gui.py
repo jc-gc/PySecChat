@@ -1,16 +1,18 @@
 """Script for Tkinter GUI chat client."""
 import atexit
 import tkinter
+import select
 from random import randint
-from socket import AF_INET, socket, SOCK_STREAM
+from socket import AF_INET, socket, SOCK_STREAM, IPPROTO_TCP, SOL_SOCKET, SO_KEEPALIVE, TCP_KEEPIDLE, TCP_KEEPINTVL, TCP_KEEPCNT
 from threading import Thread
+
 
 HEADERLEN = 16
 NAME = f'guiCl-{randint(100, 999)}'
 ENCODING = 'utf-8'
 BUFFERSIZE = 64
 
-SERVER_ADDR = ('127.0.0.1', 1252)
+SERVER_ADDR = ('wolfyxk.amcrestddns.com', 1252)
 
 
 def receive():
@@ -21,6 +23,11 @@ def receive():
         while True:
             try:
                 msg = client_socket.recv(BUFFERSIZE)
+                
+                if new_msg == True and msg.decode("utf-8") == "":
+                    print("Connection Ended")
+                    break
+                
                 if new_msg:
                     msglen = int(msg[:3])
                     sendername = msg[4:HEADERLEN].decode('utf-8')
@@ -37,8 +44,12 @@ def receive():
                     full_msg = ''
 
             except OSError:  # Possibly client has left the chat.
+                print("OSError")
                 break
         print("Exiting thread")
+        break
+    top.destroy()
+    exit()
 
 
 def send(event=None):
@@ -113,8 +124,18 @@ exit_button.pack()
 top.protocol("WM_DELETE_WINDOW", top.destroy)
 
 client_socket = socket(AF_INET, SOCK_STREAM)
-client_socket.connect(SERVER_ADDR)
-
+client_socket.setsockopt(SOL_SOCKET, SO_KEEPALIVE, 1)
+after_idle_sec=1
+interval_sec=3
+max_fails=5
+client_socket.setsockopt(IPPROTO_TCP, TCP_KEEPIDLE, after_idle_sec)
+client_socket.setsockopt(IPPROTO_TCP, TCP_KEEPINTVL, interval_sec)
+client_socket.setsockopt(IPPROTO_TCP, TCP_KEEPCNT, max_fails)
+try:
+    client_socket.connect(SERVER_ADDR)
+except:
+    print("No connection found")
+    exit()
 atexit.register(exit_func)
 
 receive_thread = Thread(target=receive)
