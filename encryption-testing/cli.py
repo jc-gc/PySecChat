@@ -1,5 +1,7 @@
 import socket
 
+from Cryptodome.PublicKey import RSA
+
 HEADERLEN = 12
 
 SERVERADDR = ('127.0.0.1', 5555)
@@ -26,5 +28,7 @@ while 1:
 
         if len(full_msg) - HEADERLEN == msglen:
             print(full_msg[HEADERLEN:])
+            serv_pubkey = RSA.importKey(full_msg[HEADERLEN:])
+            print(serv_pubkey)
             new_msg = True
             full_msg = ''
