@@ -2,6 +2,8 @@ import socket
 import threading
 from random import *
 
+import playsound
+
 HEADERLEN = 16
 NAME = f'cliCl-{randint(100, 999)}'
 ENCODING = 'utf-8'
@@ -40,6 +42,7 @@ def showmsg():
 
             if len(full_msg) - HEADERLEN == msglen:
                 print(sendername.strip(' ') + ': ' + full_msg[HEADERLEN:])
+                playsound.playsound('bing.wav')
                 new_msg = True
                 full_msg = ''
 

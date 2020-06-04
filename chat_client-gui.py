@@ -5,6 +5,8 @@ from random import randint
 from socket import AF_INET, socket, SOCK_STREAM
 from threading import Thread
 
+import playsound
+
 HEADERLEN = 16
 NAME = f'guiCl-{randint(100, 999)}'
 ENCODING = 'utf-8'
@@ -33,6 +35,7 @@ def receive():
                 if len(full_msg) - HEADERLEN == msglen:
                     msg_list.insert(tkinter.END, sendername + full_msg[HEADERLEN:])
                     msg_list.yview(tkinter.END)
+                    playsound.playsound('bing.wav')
                     new_msg = True
                     full_msg = ''
 
