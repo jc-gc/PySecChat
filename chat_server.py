@@ -2,6 +2,24 @@ import datetime
 import socket
 import threading
 import time
+import tkinter as tk
+
+cliListWin = tk.Tk()
+cliListWin.title("Connected Clients")
+
+cliListFrame = tk.Frame(cliListWin)
+clistr = tk.StringVar()  # For the messages to be sent.
+clistr.set("")
+scrollbar = tk.Scrollbar(cliListFrame)  # To navigate through past messages.
+# Following will contain the messages.
+cliListbox = tk.Listbox(cliListFrame, height=15, width=25, yscrollcommand=scrollbar.set)
+scrollbar.configure(command=cliListbox.yview)
+scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+cliListbox.pack(side=tk.LEFT, fill=tk.BOTH)
+cliListbox.configure(yscrollcommand=scrollbar.set)
+
+cliListbox.pack()
+cliListFrame.pack()
 
 HEADERLEN = 16
 NAME = 'Server'
@@ -29,6 +47,7 @@ def setupMsg(message, name):
 
 def handleclient(conn, cliaddr):
     print('Client connected from ' + cliaddr[0])
+    updateCliList()
 
     # Announce new connection to all other clients
     for client in clients:
@@ -51,6 +70,7 @@ def handleclient(conn, cliaddr):
                 if client[0] != conn:
                     client[0].sendall(setupMsg((f'Client {cliaddr[0]} disconnected.'), NAME))
             clients.remove((conn, cliaddr))
+            updateCliList()
             break
         if data:
             if new_msg:
@@ -82,16 +102,29 @@ def acceptConnections():
         x.start()
 
 
+def getInput():
+    while 1:
+        msg = input()
+        if msg == 'exit':
+            for client in clients:
+                client[0].close()
+            sock.close()
+            exit()
+
+
+def updateCliList():
+    cliListbox.delete(0, tk.END)
+    for client in clients:
+        cliListbox.insert(tk.END, f'{client[1][0]}')
+
+
 x = threading.Thread(target=acceptConnections)
 threads.append(x)
 x.start()
+y = threading.Thread(target=getInput)
+threads.append(y)
+y.start()
 
 print('Running')
 
-while 1:
-    msg = input()
-    if msg == 'exit':
-        for client in clients:
-            client[0].close()
-        sock.close()
-        exit()
+tk.mainloop()
