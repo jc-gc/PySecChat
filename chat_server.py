@@ -5,6 +5,15 @@ import threading
 import time
 import tkinter as tk
 
+
+class message:
+    def __init__(self, msg, name, source, targets):
+        self.msg = msg
+        self.name = name
+        self.source = source
+        self.targets = targets
+
+
 sendqueue = queue.Queue()
 
 cliListWin = tk.Tk()
@@ -54,13 +63,11 @@ def handleclient(conn, cliaddr):
     updateCliList()
 
     # Announce new connection to all other clients
-    for client in clients:
-        if client[0] != conn:
-            client[0].sendall(setupMsg(('Client connected from ' + cliaddr[0]), NAME))
+    sendqueue.put(message(f'Client connected from {cliaddr[0]}.', NAME, conn, clients))
 
     time.sleep(0.05)
-    conn.sendall(setupMsg("Welcome to the server.", NAME))
-    conn.sendall(setupMsg("The time is: " + str(datetime.datetime.now()), NAME))
+    sendqueue.put(message(f'Welcome to the server.', NAME, None, [(conn, None)]))
+    sendqueue.put(message("The time is: " + str(datetime.datetime.now()), NAME, None, [(conn, None)]))
 
     full_msg = ''
     new_msg = True
@@ -70,9 +77,7 @@ def handleclient(conn, cliaddr):
             data = conn.recv(BUFFERSIZE)
         except:
             print(f'Client {cliaddr[0]} disconnected.')
-            for client in clients:
-                if client[0] != conn:
-                    client[0].sendall(setupMsg((f'Client {cliaddr[0]} disconnected.'), NAME))
+            sendqueue.put(message(f'Client {cliaddr[0]} disconnected.', NAME, conn, clients))
             clients.remove((conn, cliaddr))
             updateCliList()
             break
@@ -86,10 +91,8 @@ def handleclient(conn, cliaddr):
 
             if len(full_msg) - HEADERLEN == msglen:
                 print(f'<{cliaddr[0]}> {sendername}: {full_msg[HEADERLEN:]}')
-                msgtosend = full_msg
-                sendqueue.put((msgtosend, conn))
-                # broadcast((conn, cliaddr), full_msg[HEADERLEN:], sendername)
-                # addMsg(f'<{client[1][0]}> {sendername}: {full_msg[HEADERLEN:]}')
+
+                sendqueue.put(message(full_msg[HEADERLEN:], sendername, conn, clients))
                 new_msg = True
                 full_msg = ''
 
@@ -98,12 +101,13 @@ def handleSendQueue():
     while 1:
         msg = sendqueue.get()
         if msg != None:
-            broadcast(msg[1], msg[0][HEADERLEN:], msg[0][4:HEADERLEN])
+            broadcast(msg.msg, msg.name, msg.source, msg.targets)
 
-def broadcast(source, message, name):
-    for client in clients:
-        if client[0] != source:
-            client[0].sendall(setupMsg(message, name))
+
+def broadcast(message, name, source, targets):
+    for target in targets:
+        if target[0] != source:
+            target[0].sendall(setupMsg(message, name))
 
 
 def acceptConnections():
