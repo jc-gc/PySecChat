@@ -101,13 +101,9 @@ def handleSendQueue():
     while 1:
         msg = sendqueue.get()
         if msg != None:
-            broadcast(msg.msg, msg.name, msg.source, msg.targets)
-
-
-def broadcast(message, name, source, targets):
-    for target in targets:
-        if target[0] != source:
-            target[0].sendall(setupMsg(message, name))
+            for target in msg.targets:
+                if target[0] != msg.source:
+                    target[0].sendall(setupMsg(msg.msg, msg.name))
 
 
 def acceptConnections():
