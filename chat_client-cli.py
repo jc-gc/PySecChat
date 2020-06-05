@@ -77,7 +77,7 @@ def showmsg():
             if len(full_msg) - HEADERLEN == msglen:
 
                 # Uncomment the following line to see raw messages
-                print(str(full_msg))
+                # print(str(full_msg))
 
                 # If message is a public key
                 if msgtype.strip(' ') == 'PK':
