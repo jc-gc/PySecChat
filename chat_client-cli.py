@@ -14,11 +14,14 @@ BUFFERSIZE = 64
 # Size of RSA key to generate
 KEYSIZE = 1024
 
+# Use 127.0.0.1 to connect to server running on your own pc
+SERVER_ADDR = ('wolfyxk.amcrestddns.com', 1252)
+
 
 class Server:
-    def __init__(self, ip, port):
-        self.ip = ip
-        self.port = port
+    def __init__(self, addr):
+        self.ip = addr[0]
+        self.port = addr[1]
         self.conn = None
         self.pubkey = None
         self.rsaestablished = False
@@ -74,7 +77,7 @@ def showmsg():
             if len(full_msg) - HEADERLEN == msglen:
 
                 # Uncomment the following line to see raw messages
-                # print(str(full_msg))
+                print(str(full_msg))
 
                 # If message is a public key
                 if msgtype.strip(' ') == 'PK':
@@ -99,7 +102,7 @@ def showmsg():
                             print(f'Server encryption test failed, Disconnecting')
                             server.disconnect()
                     else:
-                        print(f'<MSG>: {decrypted}')
+                        print(f'{decrypted}')
 
                 playsound.playsound('bing.wav')
                 new_msg = True
@@ -123,7 +126,7 @@ def sendmsg():
                 continue
         else:
 
-            server.conn.sendall(setupMsg(msg, NAME))
+            server.conn.sendall(setupMsg(server.pubkey.encrypt(msg.encode('utf-8'))))
 
 
 key = createKeys(KEYSIZE)
@@ -135,7 +138,7 @@ pubkeybytes = pubkey.exportKey(format='PEM')
 clidecryptor = PKCS1_OAEP.new(key)
 
 # Use 127.0.0.1 to connect to server running on your own pc
-server = Server('wolfyxk.amcrestddns.com', 1252)
+server = Server(SERVER_ADDR)
 server.connect()
 
 showthread = threading.Thread(target=showmsg)
