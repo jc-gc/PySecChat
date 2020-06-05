@@ -5,6 +5,15 @@ import threading
 import time
 import tkinter as tk
 
+from Cryptodome import Random
+from Cryptodome.PublicKey import RSA
+
+
+def createKeys():
+    random_generator = Random.new().read
+    key = RSA.generate(1024, random_generator)
+    return key
+
 
 class message:
     def __init__(self, msg, name, source, targets):
@@ -14,7 +23,32 @@ class message:
         self.targets = targets
 
 
+class Client:
+    def __init__(self, socket, address):
+        self.connection = socket
+        self.address = address
+        self.pubkey = None
+
+    def disconnect(self):
+        self.connection.close()
+
+
 sendqueue = queue.Queue()
+
+HEADERLEN = 16
+NAME = 'Server'
+ENCODING = 'utf-8'
+BUFFERSIZE = 64
+
+# 0.0.0.0 will bind the server to all network interfaces
+addr = ('0.0.0.0', 1252)
+
+# Array of clients connected to the server (clientsocket, clientaddress)
+clients = []
+# List of active threads
+threads = list()
+
+######
 
 cliListWin = tk.Tk()
 cliListWin.title("Clients")
@@ -34,23 +68,8 @@ cliListbox.configure(yscrollcommand=scrollbar.set)
 cliListbox.pack()
 cliListFrame.pack()
 
-HEADERLEN = 16
-NAME = 'Server'
-ENCODING = 'utf-8'
-BUFFERSIZE = 64
 
-# 0.0.0.0 will bind the server to all network interfaces
-addr = ('0.0.0.0', 1252)
-
-# Array of clients connected to the server (clientsocket, clientaddress)
-clients = []
-# List of active threads
-threads = list()
-
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock.bind(addr)
-sock.listen(64)
-
+######
 
 def setupMsg(message, name):
     msg = f'{len(message):<{3}} {name:<{12}}' + message
@@ -58,27 +77,27 @@ def setupMsg(message, name):
     return msg
 
 
-def handleclient(conn, cliaddr):
-    print('Client connected from ' + cliaddr[0])
+def handleclient(client):
+    print('Client connected from ' + client.address)
     updateCliList()
 
     # Announce new connection to all other clients
-    sendqueue.put(message(f'Client connected from {cliaddr[0]}.', NAME, conn, clients))
+    sendqueue.put(message(f'Client connected from {client.address}.', NAME, client.connection, clients))
 
     time.sleep(0.05)
-    sendqueue.put(message(f'Welcome to the server.', NAME, None, [(conn, None)]))
-    sendqueue.put(message("The time is: " + str(datetime.datetime.now()), NAME, None, [(conn, None)]))
+    sendqueue.put(message(f'Welcome to the server.', NAME, None, [client]))
+    sendqueue.put(message("The time is: " + str(datetime.datetime.now()), NAME, None, [client]))
 
     full_msg = ''
     new_msg = True
 
     while 1:
         try:
-            data = conn.recv(BUFFERSIZE)
+            data = client.connection.recv(BUFFERSIZE)
         except:
-            print(f'Client {cliaddr[0]} disconnected.')
-            sendqueue.put(message(f'Client {cliaddr[0]} disconnected.', NAME, conn, clients))
-            clients.remove((conn, cliaddr))
+            print(f'Client {client.address} disconnected.')
+            sendqueue.put(message(f'Client {client.address} disconnected.', NAME, client.connection, clients))
+            clients.remove(client)
             updateCliList()
             break
         if data:
@@ -90,9 +109,9 @@ def handleclient(conn, cliaddr):
             full_msg += data.decode("utf-8")
 
             if len(full_msg) - HEADERLEN == msglen:
-                print(f'<{cliaddr[0]}> {sendername}: {full_msg[HEADERLEN:]}')
+                print(f'<{client.address}> {sendername}: {full_msg[HEADERLEN:]}')
 
-                sendqueue.put(message(full_msg[HEADERLEN:], sendername, conn, clients))
+                sendqueue.put(message(full_msg[HEADERLEN:], sendername, client.connection, clients))
                 new_msg = True
                 full_msg = ''
 
@@ -102,15 +121,17 @@ def handleSendQueue():
         msg = sendqueue.get()
         if msg != None:
             for target in msg.targets:
-                if target[0] != msg.source:
-                    target[0].sendall(setupMsg(msg.msg, msg.name))
+                if target.connection != msg.source:
+                    target.connection.sendall(setupMsg(msg.msg, msg.name))
 
 
 def acceptConnections():
     while 1:
         clicon, cliaddr = sock.accept()
-        clients.append((clicon, cliaddr))
-        x = threading.Thread(target=handleclient, args=(clicon, cliaddr))
+        newclient = Client(clicon, cliaddr[0])
+        print(newclient.address)
+        clients.append(newclient)
+        x = threading.Thread(target=handleclient, args=(newclient,))
         threads.append(x)
         x.start()
 
@@ -120,15 +141,23 @@ def getInput():
         msg = input()
         if msg == 'exit':
             for client in clients:
-                client[0].close()
+                client.disconnect()
             sock.close()
             exit()
+
 
 def updateCliList():
     cliListbox.delete(0, tk.END)
     for client in clients:
-        cliListbox.insert(tk.END, f'{client[1][0]}')
+        cliListbox.insert(tk.END, f'{client.address}')
 
+
+key = createKeys()
+pubkey = key.publickey().exportKey(format='PEM')
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.bind(addr)
+sock.listen(64)
 
 x = threading.Thread(target=acceptConnections)
 x.setDaemon(True)
