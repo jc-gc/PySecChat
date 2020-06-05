@@ -2,11 +2,10 @@
 """Script for Tkinter GUI chat client."""
 import atexit
 import tkinter
-import select
-from pygame import mixer
 
 from random import randint
-from socket import AF_INET, socket, SOCK_STREAM, IPPROTO_TCP, SOL_SOCKET, SO_KEEPALIVE, TCP_KEEPIDLE, TCP_KEEPINTVL, TCP_KEEPCNT
+from socket import AF_INET, socket, SOCK_STREAM, IPPROTO_TCP, SOL_SOCKET, SO_KEEPALIVE, TCP_KEEPIDLE, TCP_KEEPINTVL, \
+    TCP_KEEPCNT
 from threading import Thread
 
 HEADERLEN = 16
@@ -25,11 +24,11 @@ def receive():
         while True:
             try:
                 msg = client_socket.recv(BUFFERSIZE)
-                
+
                 if new_msg == True and msg.decode("utf-8") == "":
                     print("Connection Ended")
                     break
-                
+
                 if new_msg:
                     msglen = int(msg[:3])
                     sendername = msg[4:HEADERLEN].decode('utf-8')
@@ -42,7 +41,7 @@ def receive():
                 if len(full_msg) - HEADERLEN == msglen:
                     msg_list.insert(tkinter.END, sendername + full_msg[HEADERLEN:])
                     msg_list.yview(tkinter.END)
-                    #playsound('bing.wav')
+                    # playsound('bing.wav')
                     new_msg = True
                     full_msg = ''
 
@@ -128,9 +127,9 @@ top.protocol("WM_DELETE_WINDOW", top.destroy)
 
 client_socket = socket(AF_INET, SOCK_STREAM)
 client_socket.setsockopt(SOL_SOCKET, SO_KEEPALIVE, 1)
-after_idle_sec=1
-interval_sec=3
-max_fails=5
+after_idle_sec = 1
+interval_sec = 3
+max_fails = 5
 client_socket.setsockopt(IPPROTO_TCP, TCP_KEEPIDLE, after_idle_sec)
 client_socket.setsockopt(IPPROTO_TCP, TCP_KEEPINTVL, interval_sec)
 client_socket.setsockopt(IPPROTO_TCP, TCP_KEEPCNT, max_fails)
