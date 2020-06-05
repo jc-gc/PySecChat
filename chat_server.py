@@ -1,3 +1,4 @@
+import os
 import socket
 import time
 import tkinter as tk
@@ -5,9 +6,13 @@ from datetime import datetime
 from queue import Queue
 from threading import Thread
 
+import pygubu
 from Cryptodome import Random
 from Cryptodome.Cipher import PKCS1_OAEP
 from Cryptodome.PublicKey import RSA
+
+PROJECT_PATH = os.path.dirname(__file__)
+PROJECT_UI = PROJECT_PATH + "/server.ui"
 
 sendqueue = Queue()
 
@@ -56,28 +61,6 @@ class Client:
     def disconnect(self):
         self.connection.close()
 
-######
-
-cliListWin = tk.Tk()
-cliListWin.title("Clients")
-
-cliListFrame = tk.Frame(cliListWin)
-clistr = tk.StringVar()  # For the messages to be sent.
-clistr.set("")
-scrollbar = tk.Scrollbar(cliListFrame)  # To navigate through past messages.
-# Following will contain the messages.
-cliListbox = tk.Listbox(cliListFrame, height=15, width=35, yscrollcommand=scrollbar.set)
-cliListbox.configure(bg="#333333", fg='#ffffff')
-scrollbar.configure(command=cliListbox.yview, bg='#000000')
-scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-cliListbox.pack(side=tk.LEFT, fill=tk.BOTH)
-cliListbox.configure(yscrollcommand=scrollbar.set)
-
-cliListbox.pack()
-cliListFrame.pack()
-
-
-######
 
 def setupMsg(msg):
     data = f'{"MSG":<{4}}{len(msg):<{4}}'.encode('utf-8') + msg
@@ -129,7 +112,7 @@ def handleclient(client):
                     client.pubkey = encryptor
                     print('Sending ENCTEST message to client')
                     sendqueue.put(message('ENCTEST', 'MSG', [client]))
-                    time.sleep(0.5)
+                    time.sleep(1.5)
                     sendqueue.put(message(f'Welcome to the server', 'MSG', [client]))
                     sendqueue.put(message(f'The time is: {datetime.now()}', 'MSG', [client]))
 
@@ -145,6 +128,7 @@ def handleclient(client):
                             print(f'Client {client.address} encryption test failed, Disconnecting')
                             client.disconnect()
                     else:
+                        app.builder.get_object('lstboxLog').insert(tk.END, f'{client.address}: {decrypted}')
                         print(f'<{client.address}>: {decrypted}')
                         allbutself = clients.copy()
                         allbutself.remove(client)
@@ -170,7 +154,10 @@ def handleSendQueue():
 
 def acceptConnections():
     while 1:
-        clicon, cliaddr = sock.accept()
+        try:
+            clicon, cliaddr = sock.accept()
+        except:
+            break
         newclient = Client(clicon, cliaddr[0])
         clients.append(newclient)
         x = Thread(target=handleclient, args=(newclient,))
@@ -189,33 +176,65 @@ def getInput():
 
 
 def updateCliList():
-    cliListbox.delete(0, tk.END)
+    app.builder.get_object('lstboxClients').delete(0, tk.END)
     for client in clients:
-        cliListbox.insert(tk.END, f'{client.address} Enc-{client.rsaestablished}')
+        app.builder.get_object('lstboxClients').insert(tk.END, f'{client.address} Enc-{client.rsaestablished}')
 
 
-key = createKeys(KEYSIZE)
-pubkey = key.publickey()
-pubkeybytes = pubkey.exportKey(format='PEM')
-srvdecryptor = PKCS1_OAEP.new(key)
+class ChatServer:
+    def __init__(self, root):
+        self.builder = builder = pygubu.Builder()
+        builder.add_resource_path(PROJECT_PATH)
+        builder.add_from_file(PROJECT_UI)
+        self.mainwindow = builder.get_object('frame_1')
+        builder.connect_callbacks(self)
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock.bind(addr)
-sock.listen(64)
+        clilist = builder.get_object('lstboxClients')
+        cliscroll = builder.get_object('scrollClients')
+        clilist.configure(yscrollcommand=cliscroll.set)
+        cliscroll.configure(command=clilist.yview)
 
-x = Thread(target=acceptConnections)
-x.setDaemon(True)
-threads.append(x)
-x.start()
+        loglist = builder.get_object('lstboxLog')
+        logscroll = builder.get_object('scrollLog')
+        loglist.configure(yscrollcommand=logscroll.set)
+        logscroll.configure(command=loglist.yview)
 
-y = Thread(target=getInput)
-y.setDaemon(True)
-threads.append(y)
-y.start()
+    def exitApp(self):
+        for client in clients:
+            if client is not None:
+                client.connection.close()
+        sock.close()
+        exit()
 
-sendthread = Thread(target=handleSendQueue)
-sendthread.setDaemon(True)
-threads.append(sendthread)
-sendthread.start()
+    def run(self):
+        global pubkeybytes, srvdecryptor, threads, sock
+        key = createKeys(KEYSIZE)
+        pubkey = key.publickey()
+        pubkeybytes = pubkey.exportKey(format='PEM')
+        srvdecryptor = PKCS1_OAEP.new(key)
 
-tk.mainloop()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind(addr)
+        sock.listen(64)
+
+        x = Thread(target=acceptConnections)
+        x.setDaemon(True)
+        threads.append(x)
+        x.start()
+
+        y = Thread(target=getInput)
+        y.setDaemon(True)
+        threads.append(y)
+        y.start()
+
+        sendthread = Thread(target=handleSendQueue)
+        sendthread.setDaemon(True)
+        threads.append(sendthread)
+        sendthread.start()
+        self.mainwindow.mainloop()
+
+
+if __name__ == '__main__':
+    root = tk.Tk()
+    app = ChatServer(root)
+    app.run()

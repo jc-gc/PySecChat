@@ -1,14 +1,19 @@
 #!/usr/bin/env python
 """Script for Tkinter GUI chat client."""
 import atexit
+import os
 import socket
-import tkinter
+import tkinter as tk
 from random import randint
 from threading import Thread
 
+import pygubu
 from Cryptodome import Random
 from Cryptodome.Cipher import PKCS1_OAEP
 from Cryptodome.PublicKey import RSA
+
+PROJECT_PATH = os.path.dirname(__file__)
+PROJECT_UI = PROJECT_PATH + "/chatclient.ui"
 
 HEADERLEN = 8
 NAME = f'guiCl-{randint(100, 999)}'
@@ -108,35 +113,13 @@ def receive():
                                 print(f'Server encryption test failed, Disconnecting')
                                 server.disconnect()
                         else:
-                            msg_list.insert(tkinter.END, f'{decrypted}')
-                            msg_list.yview(tkinter.END)
+                            app.msglist.insert(tk.END, f'{decrypted}')
+                            app.msglist.yview(tk.END)
 
                     new_msg = True
                     full_msg = b''
 
 
-def send(event=None):
-    """Handles sending of messages."""
-    msg = my_msg.get()
-    data = setupMsg(server.pubkey.encrypt(msg.encode('utf-8')))
-    my_msg.set("")
-    server.conn.send(data)
-    msg_list.insert(tkinter.END, "<You> " + msg)
-
-    if msg == "{quit}":
-        server.diconnect()
-        top.quit()
-    msg_list.yview(tkinter.END)
-
-
-def change_name(event=None):
-    name = my_msg.get()
-    if len(name) > 12:
-        msg_list.insert(tkinter.END, "Error: Name too long")
-        return
-    global NAME
-    NAME = name
-    msg_list.insert(tkinter.END, "Name change succesful")
 
 
 def exit_func():
@@ -148,52 +131,55 @@ def exit_func():
     exit()
 
 
-top = tkinter.Tk()
-top.title("Chat Room")
+class GuiClient:
+    def __init__(self, root):
+        self.root = root
+        self.builder = builder = pygubu.Builder()
+        builder.add_resource_path(PROJECT_PATH)
+        builder.add_from_file(PROJECT_UI)
+        self.mainwindow = builder.get_object('frame_10')
+        builder.connect_callbacks(self)
 
-messages_frame = tkinter.Frame(top)
-my_msg = tkinter.StringVar()  # For the messages to be sent.
-my_msg.set("")
-scrollbar = tkinter.Scrollbar(messages_frame)  # To navigate through past messages.
-# Following will contain the messages.
-msg_list = tkinter.Listbox(messages_frame, height=15, width=50, yscrollcommand=scrollbar.set)
-scrollbar.configure(command=msg_list.yview)
-scrollbar.pack(side=tkinter.RIGHT, fill=tkinter.Y)
-msg_list.pack(side=tkinter.LEFT, fill=tkinter.BOTH)
-msg_list.configure(yscrollcommand=scrollbar.set)
+        self.root.bind('<Return>', self.SendMessage)
 
-msg_list.pack()
-messages_frame.pack()
+        self.msglist = builder.get_object('lstboxMsg')
+        msgscroll = builder.get_object('scrollMsg')
 
-entry_field = tkinter.Entry(top, textvariable=my_msg)
-entry_field.bind("<Return>", send)
-entry_field.pack()
+        self.msgbox = builder.get_object('entryMessage')
 
-send_button = tkinter.Button(top, text="Send", command=send)
-send_button.pack()
+        self.msglist.configure(yscrollcommand=msgscroll.set)
+        msgscroll.configure(command=self.msglist.yview)
 
-send_button = tkinter.Button(top, text="Change Name", command=change_name)
-send_button.pack()
+    def SendMessage(self, willy):
+        content = tk.StringVar()
+        content = self.msgbox.get()
+        data = setupMsg(server.pubkey.encrypt(content.encode('utf-8')))
+        self.msgbox.delete(0, tk.END)
+        server.conn.send(data)
+        self.msglist.insert(tk.END, "<You> " + content)
 
-exit_button = tkinter.Button(top, text="Exit", command=top.destroy)
-exit_button.pack()
+    def run(self):
+        global pubkeybytes, clidecryptor, server
+        key = createKeys(KEYSIZE)
+        pubkey = key.publickey()
+        # Clients public key in bytes string format
+        pubkeybytes = pubkey.exportKey(format='PEM')
 
-top.protocol("WM_DELETE_WINDOW", top.destroy)
+        # Decryptor to decrypt messages from the server
+        clidecryptor = PKCS1_OAEP.new(key)
 
-key = createKeys(KEYSIZE)
-pubkey = key.publickey()
-# Clients public key in bytes string format
-pubkeybytes = pubkey.exportKey(format='PEM')
+        server = Server(SERVER_ADDR)
+        server.connect()
 
-# Decryptor to decrypt messages from the server
-clidecryptor = PKCS1_OAEP.new(key)
+        atexit.register(exit_func)
 
-server = Server(SERVER_ADDR)
-server.connect()
+        receive_thread = Thread(target=receive)
+        receive_thread.setDaemon(True)
+        receive_thread.start()
+        self.mainwindow.mainloop()
 
-atexit.register(exit_func)
 
-receive_thread = Thread(target=receive)
-receive_thread.setDaemon(True)
-receive_thread.start()
-tkinter.mainloop()  # Starts GUI execution.
+if __name__ == '__main__':
+    root = tk.Tk()
+    app = GuiClient(root)
+    app.run()
