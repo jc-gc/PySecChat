@@ -109,6 +109,7 @@ def receive():
                                 server.disconnect()
                         else:
                             msg_list.insert(tkinter.END, f'{decrypted}')
+                            msg_list.yview(tkinter.END)
 
                     new_msg = True
                     full_msg = b''
