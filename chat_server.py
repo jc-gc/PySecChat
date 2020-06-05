@@ -1,31 +1,48 @@
-import queue
 import socket
-import threading
 import tkinter as tk
+from queue import Queue
+from threading import Thread
 
 from Cryptodome import Random
 from Cryptodome.Cipher import PKCS1_OAEP
 from Cryptodome.PublicKey import RSA
 
+sendqueue = Queue()
 
-def createKeys():
+HEADERLEN = 8
+NAME = 'Server'
+ENCODING = 'utf-8'
+BUFFERSIZE = 64
+KEYSIZE = 1024
+
+# 0.0.0.0 will bind the server to all network interfaces
+addr = ('0.0.0.0', 1252)
+
+# Array of clients connected to the server (clientsocket, clientaddress)
+clients = []
+# List of active threads
+threads = list()
+
+
+def createKeys(size):
+    print('Generating RSA Keys')
     random_generator = Random.new().read
-    key = RSA.generate(1024, random_generator)
+    key = RSA.generate(size, random_generator)
+    print('Done')
     return key
 
 
 class message:
-    def __init__(self, msg, type, targets):
+    def __init__(self, msg, msgtype, targets):
         self.msg = msg
         self.targets = targets
-        self.type = type
+        self.msgtype = msgtype
 
-        if self.type == 'PK':
+        if self.msgtype == 'PK':
             self.data = setupPubKey(msg)
-        elif self.type == 'MSG':
-            self.data = setupMsg(msg)
         else:
             self.data = None
+
 
 class Client:
     def __init__(self, socket, address):
@@ -36,22 +53,6 @@ class Client:
 
     def disconnect(self):
         self.connection.close()
-
-
-sendqueue = queue.Queue()
-
-HEADERLEN = 8
-NAME = 'Server'
-ENCODING = 'utf-8'
-BUFFERSIZE = 64
-
-# 0.0.0.0 will bind the server to all network interfaces
-addr = ('0.0.0.0', 1252)
-
-# Array of clients connected to the server (clientsocket, clientaddress)
-clients = []
-# List of active threads
-threads = list()
 
 ######
 
@@ -77,13 +78,14 @@ cliListFrame.pack()
 ######
 
 def setupMsg(msg):
-    data = f'{"MSG":<{4}}{len(msg):<{4}}{msg}'
+    data = f'{"MSG":<{4}}{len(msg):<{4}}'.encode('utf-8') + msg
     return data
 
 
 def setupPubKey(key):
     data = f'{"PK":<{4}}{len(key):<{4}}'.encode('utf-8') + key
     return data
+
 
 def handleclient(client):
     print('Client connected from ' + client.address)
@@ -123,6 +125,7 @@ def handleclient(client):
                     srvpubkey = RSA.importKey(full_msg[HEADERLEN:])
                     encryptor = PKCS1_OAEP.new(srvpubkey)
                     client.pubkey = encryptor
+                    sendqueue.put(message('ENCTEST', 'MSG', [client]))
 
                 elif msgtype.decode('utf-8').strip(' ') == 'MSG':
                     decrypted = srvdecryptor.decrypt(full_msg[HEADERLEN:]).decode('utf-8')
@@ -135,6 +138,8 @@ def handleclient(client):
                         else:
                             print(f'Client {client.address} encryption test failed, Disconnecting')
                             client.disconnect()
+                    else:
+                        print(f'<{client.address}>: {decrypted}')
 
                 # playsound.playsound('bing.wav')
                 new_msg = True
@@ -146,7 +151,11 @@ def handleSendQueue():
         msg = sendqueue.get()
         if msg != None:
             for target in msg.targets:
-                target.connection.sendall(msg.data)
+                if msg.msgtype == 'PK':
+                    target.connection.sendall(msg.data)
+                elif msg.msgtype == 'MSG':
+                    msg.data = setupMsg(target.pubkey.encrypt(msg.msg.encode('utf-8')))
+                    target.connection.sendall(msg.data)
 
 
 def acceptConnections():
@@ -154,7 +163,7 @@ def acceptConnections():
         clicon, cliaddr = sock.accept()
         newclient = Client(clicon, cliaddr[0])
         clients.append(newclient)
-        x = threading.Thread(target=handleclient, args=(newclient,))
+        x = Thread(target=handleclient, args=(newclient,))
         threads.append(x)
         x.start()
 
@@ -175,7 +184,7 @@ def updateCliList():
         cliListbox.insert(tk.END, f'{client.address} Enc-{client.rsaestablished}')
 
 
-key = createKeys()
+key = createKeys(KEYSIZE)
 pubkey = key.publickey()
 pubkeybytes = pubkey.exportKey(format='PEM')
 srvdecryptor = PKCS1_OAEP.new(key)
@@ -184,17 +193,17 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.bind(addr)
 sock.listen(64)
 
-x = threading.Thread(target=acceptConnections)
+x = Thread(target=acceptConnections)
 x.setDaemon(True)
 threads.append(x)
 x.start()
 
-y = threading.Thread(target=getInput)
+y = Thread(target=getInput)
 y.setDaemon(True)
 threads.append(y)
 y.start()
 
-sendthread = threading.Thread(target=handleSendQueue)
+sendthread = Thread(target=handleSendQueue)
 sendthread.setDaemon(True)
 threads.append(sendthread)
 sendthread.start()
