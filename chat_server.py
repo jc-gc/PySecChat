@@ -1,11 +1,10 @@
-import datetime
 import queue
 import socket
 import threading
-import time
 import tkinter as tk
 
 from Cryptodome import Random
+from Cryptodome.Cipher import PKCS1_OAEP
 from Cryptodome.PublicKey import RSA
 
 
@@ -16,18 +15,24 @@ def createKeys():
 
 
 class message:
-    def __init__(self, msg, name, source, targets):
+    def __init__(self, msg, type, targets):
         self.msg = msg
-        self.name = name
-        self.source = source
         self.targets = targets
+        self.type = type
 
+        if self.type == 'PK':
+            self.data = setupPubKey(msg)
+        elif self.type == 'MSG':
+            self.data = setupMsg(msg)
+        else:
+            self.data = None
 
 class Client:
     def __init__(self, socket, address):
         self.connection = socket
         self.address = address
         self.pubkey = None
+        self.rsaestablished = False
 
     def disconnect(self):
         self.connection.close()
@@ -35,7 +40,7 @@ class Client:
 
 sendqueue = queue.Queue()
 
-HEADERLEN = 16
+HEADERLEN = 8
 NAME = 'Server'
 ENCODING = 'utf-8'
 BUFFERSIZE = 64
@@ -71,24 +76,28 @@ cliListFrame.pack()
 
 ######
 
-def setupMsg(message, name):
-    msg = f'{len(message):<{3}} {name:<{12}}' + message
-    msg = msg.encode(ENCODING)
-    return msg
+def setupMsg(msg):
+    data = f'{"MSG":<{4}}{len(msg):<{4}}{msg}'
+    return data
 
+
+def setupPubKey(key):
+    data = f'{"PK":<{4}}{len(key):<{4}}'.encode('utf-8') + key
+    return data
 
 def handleclient(client):
     print('Client connected from ' + client.address)
     updateCliList()
 
+    allbutself = clients.copy()
+    allbutself.remove(client)
+
+    sendqueue.put(message(pubkeybytes, 'PK', [client]))
+
     # Announce new connection to all other clients
-    sendqueue.put(message(f'Client connected from {client.address}.', NAME, client.connection, clients))
+    sendqueue.put(message(f'Client connected from {client.address}.', 'MSG', allbutself))
 
-    time.sleep(0.05)
-    sendqueue.put(message(f'Welcome to the server.', NAME, None, [client]))
-    sendqueue.put(message("The time is: " + str(datetime.datetime.now()), NAME, None, [client]))
-
-    full_msg = ''
+    full_msg = b''
     new_msg = True
 
     while 1:
@@ -96,24 +105,40 @@ def handleclient(client):
             data = client.connection.recv(BUFFERSIZE)
         except:
             print(f'Client {client.address} disconnected.')
-            sendqueue.put(message(f'Client {client.address} disconnected.', NAME, client.connection, clients))
             clients.remove(client)
+            sendqueue.put(message(f'Client {client.address} disconnected.', 'MSG', clients))
             updateCliList()
             break
         if data:
             if new_msg:
-                msglen = int(data[:3])
-                sendername = data[4:HEADERLEN].decode('utf-8').strip(' ')
+                msgtype = data[:3]
+                msglen = int(data[4:HEADERLEN])
                 new_msg = False
 
-            full_msg += data.decode("utf-8")
+            full_msg += data
 
             if len(full_msg) - HEADERLEN == msglen:
-                print(f'<{client.address}> {sendername}: {full_msg[HEADERLEN:]}')
+                if msgtype.decode('utf-8').strip(' ') == 'PK':
+                    print(f'PubKey Recieved from {client.address}')
+                    srvpubkey = RSA.importKey(full_msg[HEADERLEN:])
+                    encryptor = PKCS1_OAEP.new(srvpubkey)
+                    client.pubkey = encryptor
 
-                sendqueue.put(message(full_msg[HEADERLEN:], sendername, client.connection, clients))
+                elif msgtype.decode('utf-8').strip(' ') == 'MSG':
+                    decrypted = srvdecryptor.decrypt(full_msg[HEADERLEN:]).decode('utf-8')
+
+                    if client.rsaestablished is False:
+                        if decrypted == 'ENCTEST':
+                            client.rsaestablished = True
+                            print(f'{client.address} Encryption Established')
+                            updateCliList()
+                        else:
+                            print(f'Client {client.address} encryption test failed, Disconnecting')
+                            client.disconnect()
+
+                # playsound.playsound('bing.wav')
                 new_msg = True
-                full_msg = ''
+                full_msg = b''
 
 
 def handleSendQueue():
@@ -121,15 +146,13 @@ def handleSendQueue():
         msg = sendqueue.get()
         if msg != None:
             for target in msg.targets:
-                if target.connection != msg.source:
-                    target.connection.sendall(setupMsg(msg.msg, msg.name))
+                target.connection.sendall(msg.data)
 
 
 def acceptConnections():
     while 1:
         clicon, cliaddr = sock.accept()
         newclient = Client(clicon, cliaddr[0])
-        print(newclient.address)
         clients.append(newclient)
         x = threading.Thread(target=handleclient, args=(newclient,))
         threads.append(x)
@@ -149,11 +172,13 @@ def getInput():
 def updateCliList():
     cliListbox.delete(0, tk.END)
     for client in clients:
-        cliListbox.insert(tk.END, f'{client.address}')
+        cliListbox.insert(tk.END, f'{client.address} Enc-{client.rsaestablished}')
 
 
 key = createKeys()
-pubkey = key.publickey().exportKey(format='PEM')
+pubkey = key.publickey()
+pubkeybytes = pubkey.exportKey(format='PEM')
+srvdecryptor = PKCS1_OAEP.new(key)
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.bind(addr)
@@ -173,7 +198,5 @@ sendthread = threading.Thread(target=handleSendQueue)
 sendthread.setDaemon(True)
 threads.append(sendthread)
 sendthread.start()
-
-print('Running')
 
 tk.mainloop()
