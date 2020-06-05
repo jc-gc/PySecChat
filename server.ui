@@ -1,0 +1,111 @@
+<?xml version='1.0' encoding='utf-8'?>
+<interface version="1.0">
+    <object class="ttk.Frame" id="frame_1">
+        <property name="height">200</property>
+        <property name="width">200</property>
+        <layout manager="pack">
+            <property name="propagate">True</property>
+            <property name="side">top</property>
+        </layout>
+        <child>
+            <object class="ttk.Frame" id="frame_7">
+                <property name="height">200</property>
+                <property name="width">200</property>
+                <layout manager="pack">
+                    <property name="propagate">True</property>
+                    <property name="side">bottom</property>
+                </layout>
+                <child>
+                    <object class="tk.Frame" id="frame_5_7">
+                        <property name="height">200</property>
+                        <property name="width">200</property>
+                        <layout manager="pack">
+                            <property name="propagate">True</property>
+                            <property name="side">left</property>
+                        </layout>
+                        <child>
+                            <object class="tk.Label" id="lblclients_7">
+                                <property name="compound">top</property>
+                                <property name="justify">left</property>
+                                <property name="text" translatable="yes">Clients</property>
+                                <layout manager="pack">
+                                    <property name="fill">x</property>
+                                    <property name="propagate">True</property>
+                                    <property name="side">top</property>
+                                </layout>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="tk.Listbox" id="lstboxClients">
+                                <property name="background">#3f3f3f</property>
+                                <property name="exportselection">true</property>
+                                <property name="font">TkTextFont</property>
+                                <property name="foreground">#ffffff</property>
+                                <property name="height">20</property>
+                                <property name="takefocus">false</property>
+                                <property name="width">25</property>
+                                <layout manager="pack">
+                                    <property name="propagate">True</property>
+                                    <property name="side">left</property>
+                                </layout>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="ttk.Scrollbar" id="scrollClients">
+                                <property name="orient">vertical</property>
+                                <layout manager="pack">
+                                    <property name="fill">y</property>
+                                    <property name="propagate">True</property>
+                                    <property name="side">right</property>
+                                </layout>
+                            </object>
+                        </child>
+                    </object>
+                </child>
+                <child>
+                    <object class="tk.Frame" id="frame_6_8">
+                        <property name="height">200</property>
+                        <property name="width">200</property>
+                        <layout manager="pack">
+                            <property name="propagate">True</property>
+                            <property name="side">right</property>
+                        </layout>
+                        <child>
+                            <object class="tk.Label" id="lbllog_8">
+                                <property name="text" translatable="yes">Log</property>
+                                <layout manager="pack">
+                                    <property name="fill">x</property>
+                                    <property name="propagate">True</property>
+                                    <property name="side">top</property>
+                                </layout>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="tk.Listbox" id="lstboxLog">
+                                <property name="background">#3f3f3f</property>
+                                <property name="foreground">#ffffff</property>
+                                <property name="height">20</property>
+                                <property name="relief">flat</property>
+                                <property name="width">50</property>
+                                <layout manager="pack">
+                                    <property name="propagate">True</property>
+                                    <property name="side">left</property>
+                                </layout>
+                            </object>
+                        </child>
+                        <child>
+                            <object class="ttk.Scrollbar" id="scrollLog">
+                                <property name="orient">vertical</property>
+                                <layout manager="pack">
+                                    <property name="fill">y</property>
+                                    <property name="propagate">True</property>
+                                    <property name="side">right</property>
+                                </layout>
+                            </object>
+                        </child>
+                    </object>
+                </child>
+            </object>
+        </child>
+    </object>
+</interface>
