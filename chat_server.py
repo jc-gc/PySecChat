@@ -93,13 +93,12 @@ def handleclient(client):
     print('Client connected from ' + client.address)
     updateCliList()
 
-    allbutself = clients.copy()
-    allbutself.remove(client)
-
     print('Sending server pubkey to client')
     sendqueue.put(message(pubkeybytes, 'PK', [client]))
 
     # Announce new connection to all other clients
+    allbutself = clients.copy()
+    allbutself.remove(client)
     sendqueue.put(message(f'Client connected from {client.address}.', 'MSG', allbutself))
 
     full_msg = b''
@@ -130,8 +129,8 @@ def handleclient(client):
                     client.pubkey = encryptor
                     print('Sending ENCTEST message to client')
                     sendqueue.put(message('ENCTEST', 'MSG', [client]))
-                    time.sleep(2)
-                    sendqueue.put(message('Welcome to the server', 'MSG', [client]))
+                    time.sleep(0.5)
+                    sendqueue.put(message(f'Welcome to the server', 'MSG', [client]))
                     sendqueue.put(message(f'The time is: {datetime.now()}', 'MSG', [client]))
 
                 elif msgtype.decode('utf-8').strip(' ') == 'MSG':
@@ -147,6 +146,9 @@ def handleclient(client):
                             client.disconnect()
                     else:
                         print(f'<{client.address}>: {decrypted}')
+                        allbutself = clients.copy()
+                        allbutself.remove(client)
+                        sendqueue.put(message(f'{client.address}: {decrypted}', 'MSG', allbutself))
 
                 # playsound.playsound('bing.wav')
                 new_msg = True
@@ -157,12 +159,13 @@ def handleSendQueue():
     while 1:
         msg = sendqueue.get()
         if msg != None:
-            for target in msg.targets:
-                if msg.msgtype == 'PK':
-                    target.connection.sendall(msg.data)
-                elif msg.msgtype == 'MSG':
-                    msg.data = setupMsg(target.pubkey.encrypt(msg.msg.encode('utf-8')))
-                    target.connection.sendall(msg.data)
+            if msg.targets is not None:
+                for target in msg.targets:
+                    if msg.msgtype == 'PK':
+                        target.connection.sendall(msg.data)
+                    elif msg.msgtype == 'MSG':
+                        msg.data = setupMsg(target.pubkey.encrypt(msg.msg.encode('utf-8')))
+                        target.connection.sendall(msg.data)
 
 
 def acceptConnections():
