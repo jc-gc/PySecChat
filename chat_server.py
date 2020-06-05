@@ -1,5 +1,7 @@
 import socket
+import time
 import tkinter as tk
+from datetime import datetime
 from queue import Queue
 from threading import Thread
 
@@ -48,7 +50,7 @@ class Client:
     def __init__(self, socket, address):
         self.connection = socket
         self.address = address
-        self.pubkey = None
+        self.pubkey = None  # Used to encrypt messages to send to the client
         self.rsaestablished = False
 
     def disconnect(self):
@@ -94,6 +96,7 @@ def handleclient(client):
     allbutself = clients.copy()
     allbutself.remove(client)
 
+    print('Sending server pubkey to client')
     sendqueue.put(message(pubkeybytes, 'PK', [client]))
 
     # Announce new connection to all other clients
@@ -125,7 +128,11 @@ def handleclient(client):
                     srvpubkey = RSA.importKey(full_msg[HEADERLEN:])
                     encryptor = PKCS1_OAEP.new(srvpubkey)
                     client.pubkey = encryptor
+                    print('Sending ENCTEST message to client')
                     sendqueue.put(message('ENCTEST', 'MSG', [client]))
+                    time.sleep(2)
+                    sendqueue.put(message('Welcome to the server', 'MSG', [client]))
+                    sendqueue.put(message(f'The time is: {datetime.now()}', 'MSG', [client]))
 
                 elif msgtype.decode('utf-8').strip(' ') == 'MSG':
                     decrypted = srvdecryptor.decrypt(full_msg[HEADERLEN:]).decode('utf-8')
@@ -133,7 +140,7 @@ def handleclient(client):
                     if client.rsaestablished is False:
                         if decrypted == 'ENCTEST':
                             client.rsaestablished = True
-                            print(f'{client.address} Encryption Established')
+                            print(f'{client.address} ENCTEST recieved')
                             updateCliList()
                         else:
                             print(f'Client {client.address} encryption test failed, Disconnecting')
