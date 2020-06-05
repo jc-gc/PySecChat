@@ -23,7 +23,7 @@ BUFFERSIZE = 64
 KEYSIZE = 1024
 
 # Use 127.0.0.1 to connect to server running on your own pc
-SERVER_ADDR = ('wolfyxk.amcrestddns.com', 1252)
+SERVER_ADDR = ('127.0.0.1', 1252)
 
 
 class Server:
