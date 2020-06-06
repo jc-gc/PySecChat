@@ -121,7 +121,6 @@ def receive():
 
 
 
-
 def exit_func():
     print("Exiting")
     try:
@@ -150,13 +149,13 @@ class GuiClient:
         self.msglist.configure(yscrollcommand=msgscroll.set)
         msgscroll.configure(command=self.msglist.yview)
 
-    def SendMessage(self, willy):
+    def SendMessage(self, *args):
         content = tk.StringVar()
-        content = self.msgbox.get()
+        content = app.msgbox.get()
         data = setupMsg(server.pubkey.encrypt(content.encode('utf-8')))
-        self.msgbox.delete(0, tk.END)
+        app.msgbox.delete(0, tk.END)
         server.conn.send(data)
-        self.msglist.insert(tk.END, "<You> " + content)
+        app.msglist.insert(tk.END, "<You> " + content)
 
     def run(self):
         global pubkeybytes, clidecryptor, server
