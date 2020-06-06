@@ -31,7 +31,7 @@ class Server:
             self.conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.conn.connect((self.ip, self.port))
 
-    def diconnect(self):
+    def disconnect(self):
         if self.conn is not None:
             self.conn.close()
             self.conn = None
