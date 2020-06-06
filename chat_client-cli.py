@@ -1,5 +1,6 @@
 import socket
 import threading
+import time
 from random import *
 
 import playsound
@@ -88,6 +89,7 @@ def showmsg():
                     server.pubkey = encryptor
                     print('Sending ENCTEST message to server')
                     server.conn.sendall(setupMsg(server.pubkey.encrypt('ENCTEST'.encode('utf-8'))))
+                    time.sleep(0.5)
                     server.conn.sendall(setupPubKey(pubkeybytes))
 
                 # If message is of MSG type

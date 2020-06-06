@@ -112,7 +112,7 @@ def handleclient(client):
                     client.pubkey = encryptor
                     print('Sending ENCTEST message to client')
                     sendqueue.put(message('ENCTEST', 'MSG', [client]))
-                    time.sleep(1.5)
+                    time.sleep(0.5)
                     sendqueue.put(message(f'Welcome to the server', 'MSG', [client]))
                     sendqueue.put(message(f'The time is: {datetime.now()}', 'MSG', [client]))
 

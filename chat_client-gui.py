@@ -3,6 +3,7 @@
 import atexit
 import os
 import socket
+import time
 import tkinter as tk
 from random import randint
 from threading import Thread
@@ -99,6 +100,7 @@ def receive():
                         server.pubkey = encryptor
                         print('Sending ENCTEST message to server')
                         server.conn.sendall(setupMsg(server.pubkey.encrypt('ENCTEST'.encode('utf-8'))))
+                        time.sleep(0.5)
                         server.conn.sendall(setupPubKey(pubkeybytes))
 
                     # If message is of MSG type
