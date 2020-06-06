@@ -1,3 +1,0 @@
-# chattest
-
-Simple chat room.
