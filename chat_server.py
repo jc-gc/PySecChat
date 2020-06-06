@@ -32,10 +32,10 @@ threads = list()
 
 
 def createKeys(size):
-    print('Generating RSA Keys')
+    app.loglist.insert(tk.END, 'Generating RSA Keys')
     random_generator = Random.new().read
     key = RSA.generate(size, random_generator)
-    print('Done')
+    app.loglist.insert(tk.END, 'Done')
     return key
 
 
@@ -73,16 +73,12 @@ def setupPubKey(key):
 
 
 def handleclient(client):
-    print('Client connected from ' + client.address)
+    app.loglist.insert(tk.END, f'Client connected from {client.address}')
     updateCliList()
 
-    print('Sending server pubkey to client')
+    app.loglist.insert(tk.END, f'Sending server pubkey to {client.address}')
     sendqueue.put(message(pubkeybytes, 'PK', [client]))
 
-    # Announce new connection to all other clients
-    allbutself = clients.copy()
-    allbutself.remove(client)
-    sendqueue.put(message(f'Client connected from {client.address}.', 'MSG', allbutself))
 
     full_msg = b''
     new_msg = True
@@ -91,26 +87,33 @@ def handleclient(client):
         try:
             data = client.connection.recv(BUFFERSIZE)
         except:
-            print(f'Client {client.address} disconnected.')
+            app.loglist.insert(tk.END, f'Client {client.address} disconnected.')
             clients.remove(client)
             sendqueue.put(message(f'Client {client.address} disconnected.', 'MSG', clients))
             updateCliList()
             break
         if data:
             if new_msg:
-                msgtype = data[:3]
-                msglen = int(data[4:HEADERLEN])
-                new_msg = False
+                try:
+                    msgtype = data[:3]
+                    msglen = int(data[4:HEADERLEN])
+                    new_msg = False
+                except:
+                    app.loglist.insert(tk.END, f'Invalid protocol from {client.address}, Disconnecting')
+                    client.disconnect()
+                    clients.remove(client)
+                    updateCliList()
+                    break
 
             full_msg += data
 
             if len(full_msg) - HEADERLEN == msglen:
                 if msgtype.decode('utf-8').strip(' ') == 'PK':
-                    print(f'PubKey Recieved from {client.address}')
+                    app.loglist.insert(tk.END, f'PubKey Recieved from {client.address}')
                     srvpubkey = RSA.importKey(full_msg[HEADERLEN:])
                     encryptor = PKCS1_OAEP.new(srvpubkey)
                     client.pubkey = encryptor
-                    print('Sending ENCTEST message to client')
+                    app.loglist.insert(tk.END, 'Sending ENCTEST message to client')
                     sendqueue.put(message('ENCTEST', 'MSG', [client]))
                     time.sleep(0.5)
                     sendqueue.put(message(f'Welcome to the server', 'MSG', [client]))
@@ -122,14 +125,16 @@ def handleclient(client):
                     if client.rsaestablished is False:
                         if decrypted == 'ENCTEST':
                             client.rsaestablished = True
-                            print(f'{client.address} ENCTEST recieved')
+                            app.loglist.insert(tk.END, f'{client.address} ENCTEST recieved')
+                            allbutself = clients.copy()
+                            allbutself.remove(client)
+                            sendqueue.put(message(f'Client connected from {client.address}.', 'MSG', allbutself))
                             updateCliList()
                         else:
-                            print(f'Client {client.address} encryption test failed, Disconnecting')
+                            app.loglist.insert(tk.END, f'Client {client.address} encryption test failed, Disconnecting')
                             client.disconnect()
                     else:
-                        app.builder.get_object('lstboxLog').insert(tk.END, f'{client.address}: {decrypted}')
-                        print(f'<{client.address}>: {decrypted}')
+                        app.loglist.insert(tk.END, f'{client.address}: {decrypted}')
                         allbutself = clients.copy()
                         allbutself.remove(client)
                         sendqueue.put(message(f'{client.address}: {decrypted}', 'MSG', allbutself))
@@ -189,15 +194,15 @@ class ChatServer:
         self.mainwindow = builder.get_object('frame_1')
         builder.connect_callbacks(self)
 
-        clilist = builder.get_object('lstboxClients')
-        cliscroll = builder.get_object('scrollClients')
-        clilist.configure(yscrollcommand=cliscroll.set)
-        cliscroll.configure(command=clilist.yview)
+        self.clilist = builder.get_object('lstboxClients')
+        self.cliscroll = builder.get_object('scrollClients')
+        self.clilist.configure(yscrollcommand=self.cliscroll.set)
+        self.cliscroll.configure(command=self.clilist.yview)
 
-        loglist = builder.get_object('lstboxLog')
-        logscroll = builder.get_object('scrollLog')
-        loglist.configure(yscrollcommand=logscroll.set)
-        logscroll.configure(command=loglist.yview)
+        self.loglist = builder.get_object('lstboxLog')
+        self.logscroll = builder.get_object('scrollLog')
+        self.loglist.configure(yscrollcommand=self.logscroll.set)
+        self.logscroll.configure(command=self.loglist.yview)
 
     def exitApp(self):
         for client in clients:
