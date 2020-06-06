@@ -3,7 +3,6 @@ import threading
 import time
 from random import *
 
-import playsound
 from Cryptodome import Random
 from Cryptodome.Cipher import PKCS1_OAEP
 from Cryptodome.PublicKey import RSA
@@ -106,7 +105,6 @@ def showmsg():
                     else:
                         print(f'{decrypted}')
 
-                playsound.playsound('bing.wav')
                 new_msg = True
                 full_msg = b''
 
