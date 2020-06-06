@@ -5,7 +5,6 @@ import os
 import socket
 import time
 import tkinter as tk
-from random import randint
 from threading import Thread
 
 import pygubu
@@ -17,65 +16,81 @@ PROJECT_PATH = os.path.dirname(__file__)
 PROJECT_UI = PROJECT_PATH + "/chatclient.ui"
 
 HEADERLEN = 8
-NAME = f'guiCl-{randint(100, 999)}'
 ENCODING = 'utf-8'
 BUFFERSIZE = 64
 # Size of RSA key to generate
 KEYSIZE = 1024
 
-# Use 127.0.0.1 to connect to server running on your own pc
-SERVER_ADDR = ('127.0.0.1', 1252)
 
+class GuiClient:
+    def __init__(self, root):
+        # Tk GUI init
+        self.root = root
+        self.builder = builder = pygubu.Builder()
+        builder.add_resource_path(PROJECT_PATH)
+        builder.add_from_file(PROJECT_UI)
+        self.mainwindow = builder.get_object('frame_10')
+        builder.connect_callbacks(self)
 
-class Server:
-    def __init__(self, addr):
-        self.ip = addr[0]
-        self.port = addr[1]
-        self.conn = None
-        self.pubkey = None
-        self.rsaestablished = False
+        # Bind enter key to btnSendClick function
+        self.root.bind('<Return>', self.btnSendClick)
 
-    def connect(self):
-        if self.conn is None:
-            self.conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.conn.connect((self.ip, self.port))
+        self.msglist = builder.get_object('lstboxMsg')
+        self.msgbox = builder.get_object('entryMessage')
+        self.ipentry = builder.get_object('entryIP')
+        self.portentry = builder.get_object('entryPort')
+        self.btnDisconnect = builder.get_object('btnDisconnect')
+        self.btnConnect = builder.get_object('btnConnect')
+        self.btnSend = builder.get_object('btnSend')
 
-    def diconnect(self):
-        if self.conn is not None:
-            self.conn.close()
+        msgscroll = builder.get_object('scrollMsg')
+        self.msglist.configure(yscrollcommand=msgscroll.set)
+        msgscroll.configure(command=self.msglist.yview)
+
+        self.key = self.createKeys(KEYSIZE)
+        self.pubkeybytes = self.key.publickey().exportKey(format='PEM')
+        self.clidecryptor = PKCS1_OAEP.new(self.key)
+
+    class Server:
+        def __init__(self, addr):
+            self.ip = addr[0]
+            self.port = addr[1]
             self.conn = None
+            self.pubkey = None
+            self.rsaestablished = False
 
+        def connect(self):
+            if self.conn is None:
+                self.conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.conn.connect((self.ip, self.port))
 
-def createKeys(size):
-    print('Generating RSA Keys')
-    random_generator = Random.new().read
-    key = RSA.generate(size, random_generator)
-    print('Done')
-    return key
+        def disconnect(self):
+            if self.conn is not None:
+                self.conn.close()
+                self.conn = None
 
+    def setupMsg(self, msg):
+        data = f'{"MSG":<{4}}{len(msg):<{4}}'.encode('utf-8') + msg
+        return data
 
-def setupMsg(msg):
-    data = f'{"MSG":<{4}}{len(msg):<{4}}'.encode('utf-8') + msg
-    return data
+    def setupPubKey(self, key):
+        data = f'{"PK":<{4}}{len(key):<{4}}'.encode('utf-8') + key
+        return data
 
+    def createKeys(self, size):
+        print('Generating RSA Keys')
+        random_generator = Random.new().read
+        key = RSA.generate(size, random_generator)
+        print('Done')
+        return key
 
-def setupPubKey(key):
-    data = f'{"PK":<{4}}{len(key):<{4}}'.encode('utf-8') + key
-    return data
-
-
-def receive():
-    """Handles receiving of messages."""
-    while True:
+    def receive(self):
         full_msg = b''
         new_msg = True
-
-        while 1:
+        while True:
             try:
-                data = server.conn.recv(BUFFERSIZE)
+                data = self.server.conn.recv(BUFFERSIZE)
             except:
-                print(f'Connection Lost')
-                server.conn = None
                 break
             # If data is not empty
             if data:
@@ -97,86 +112,82 @@ def receive():
                         # Import public key string into RSA key object
                         srvpubkey = RSA.importKey(full_msg[HEADERLEN:])
                         encryptor = PKCS1_OAEP.new(srvpubkey)
-                        server.pubkey = encryptor
+                        self.server.pubkey = encryptor
                         print('Sending ENCTEST message to server')
-                        server.conn.sendall(setupMsg(server.pubkey.encrypt('ENCTEST'.encode('utf-8'))))
+                        self.server.conn.sendall(self.setupMsg(self.server.pubkey.encrypt('ENCTEST'.encode('utf-8'))))
                         time.sleep(0.5)
-                        server.conn.sendall(setupPubKey(pubkeybytes))
+                        self.server.conn.sendall(self.setupPubKey(self.pubkeybytes))
 
                     # If message is of MSG type
                     elif msgtype.strip(' ') == 'MSG':
-                        decrypted = clidecryptor.decrypt(full_msg[HEADERLEN:]).decode('utf-8')
+                        decrypted = self.clidecryptor.decrypt(full_msg[HEADERLEN:]).decode('utf-8')
 
-                        if server.rsaestablished is False:
+                        if self.server.rsaestablished is False:
                             if decrypted == 'ENCTEST':
-                                server.rsaestablished = True
+                                self.server.rsaestablished = True
                                 print(f'ENCTEST recieved from server')
+                                self.msgbox.config(state='normal')
+                                self.btnSend.config(state='normal')
+
                             else:
                                 print(f'Server encryption test failed, Disconnecting')
-                                server.disconnect()
+                                self.server.disconnect()
                         else:
-                            app.msglist.insert(tk.END, f'{decrypted}')
-                            app.msglist.yview(tk.END)
+                            self.msglist.insert(tk.END, f'{decrypted}')
+                            self.msglist.yview(tk.END)
 
                     new_msg = True
                     full_msg = b''
 
+    def btnSendClick(self, *args):
+        content = str(app.msgbox.get())
+        data = self.setupMsg(self.server.pubkey.encrypt(content.encode('utf-8')))
+        self.msgbox.delete(0, tk.END)
+        self.server.conn.send(data)
+        self.msglist.insert(tk.END, "<You> " + content)
 
+    def btnConnectClick(self):
+        self.ipentry.config(state='disabled')
+        self.portentry.config(state='disabled')
+        self.btnConnect.config(state='disabled')
+        try:
+            ip = str(self.ipentry.get())
+            port = int(self.portentry.get())
+            addr = (ip, port)
 
-def exit_func():
-    print("Exiting")
-    try:
-        server.diconnect()
-    except:
-        pass
-    exit()
+            self.server = self.Server(addr)
+            self.server.connect()
 
+            self.receive_thread = Thread(target=self.receive)
+            self.receive_thread.setDaemon(True)
+            self.receive_thread.start()
+            self.btnDisconnect.config(state='normal')
+        except:
+            self.ipentry.config(state='normal')
+            self.portentry.config(state='normal')
+            self.btnConnect.config(state='normal')
+            self.msglist.insert(tk.END, 'Connection Failed')
 
-class GuiClient:
-    def __init__(self, root):
-        self.root = root
-        self.builder = builder = pygubu.Builder()
-        builder.add_resource_path(PROJECT_PATH)
-        builder.add_from_file(PROJECT_UI)
-        self.mainwindow = builder.get_object('frame_10')
-        builder.connect_callbacks(self)
+    def btnDisconnectCLick(self):
+        try:
+            self.server.disconnect()
+            self.server = None
+            self.ipentry.config(state='normal')
+            self.portentry.config(state='normal')
+            self.btnConnect.config(state='normal')
+            self.msgbox.config(state='disabled')
+            self.btnSend.config(state='disabled')
+            self.btnDisconnect.config(state='disabled')
+            self.receive_thread = None
+        except Exception as e:
+            print(e)
 
-        self.root.bind('<Return>', self.SendMessage)
-
-        self.msglist = builder.get_object('lstboxMsg')
-        msgscroll = builder.get_object('scrollMsg')
-
-        self.msgbox = builder.get_object('entryMessage')
-
-        self.msglist.configure(yscrollcommand=msgscroll.set)
-        msgscroll.configure(command=self.msglist.yview)
-
-    def SendMessage(self, *args):
-        content = tk.StringVar()
-        content = app.msgbox.get()
-        data = setupMsg(server.pubkey.encrypt(content.encode('utf-8')))
-        app.msgbox.delete(0, tk.END)
-        server.conn.send(data)
-        app.msglist.insert(tk.END, "<You> " + content)
+    def exit_func(self):
+        if self.server is not None:
+            self.server.disconnect()
 
     def run(self):
-        global pubkeybytes, clidecryptor, server
-        key = createKeys(KEYSIZE)
-        pubkey = key.publickey()
-        # Clients public key in bytes string format
-        pubkeybytes = pubkey.exportKey(format='PEM')
-
-        # Decryptor to decrypt messages from the server
-        clidecryptor = PKCS1_OAEP.new(key)
-
-        server = Server(SERVER_ADDR)
-        server.connect()
-
-        atexit.register(exit_func)
-
-        receive_thread = Thread(target=receive)
-        receive_thread.setDaemon(True)
-        receive_thread.start()
+        atexit.register(self.exit_func)
         self.mainwindow.mainloop()
 
 
