@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-"""Script for Tkinter GUI chat client."""
 import atexit
 import os
 import socket
@@ -8,29 +6,29 @@ import tkinter as tk
 from threading import Thread
 
 import pygubu
-from Cryptodome import Random
 from Cryptodome.Cipher import PKCS1_OAEP
 from Cryptodome.PublicKey import RSA
+
+import PySecChat
 
 PROJECT_PATH = os.path.dirname(__file__)
 PROJECT_UI = PROJECT_PATH + "/chatclient.ui"
 
-HEADERLEN = 8
 ENCODING = 'utf-8'
 BUFFERSIZE = 64
 # Size of RSA key to generate
 KEYSIZE = 1024
 
 
-class GuiClient:
+class GuiClient(PySecChat.PySecChat):
     def __init__(self, root):
         # Tk GUI init
         self.root = root
         self.builder = builder = pygubu.Builder()
-        builder.add_resource_path(PROJECT_PATH)
-        builder.add_from_file(PROJECT_UI)
+        self.builder.add_resource_path(PROJECT_PATH)
+        self.builder.add_from_file(PROJECT_UI)
         self.mainwindow = builder.get_object('frame_10')
-        builder.connect_callbacks(self)
+        self.builder.connect_callbacks(self)
 
         # Bind enter key to btnSendClick function
         self.root.bind('<Return>', self.btnSendClick)
@@ -69,21 +67,6 @@ class GuiClient:
                 self.conn.close()
                 self.conn = None
 
-    def setupMsg(self, msg):
-        data = f'{"MSG":<{4}}{len(msg):<{4}}'.encode('utf-8') + msg
-        return data
-
-    def setupPubKey(self, key):
-        data = f'{"PK":<{4}}{len(key):<{4}}'.encode('utf-8') + key
-        return data
-
-    def createKeys(self, size):
-        print('Generating RSA Keys')
-        random_generator = Random.new().read
-        key = RSA.generate(size, random_generator)
-        print('Done')
-        return key
-
     def receive(self):
         full_msg = b''
         new_msg = True
@@ -96,12 +79,12 @@ class GuiClient:
             if data:
                 if new_msg:
                     msgtype = data[:3].decode('utf-8')  # Type of message (MSG/PK)
-                    msglen = int(data[4:HEADERLEN].decode('utf-8'))  # Length of message
+                    msglen = int(data[4:PySecChat.HEADERLEN].decode('utf-8'))  # Length of message
                     new_msg = False
 
                 full_msg += data
 
-                if len(full_msg) - HEADERLEN == msglen:
+                if len(full_msg) - PySecChat.HEADERLEN == msglen:
 
                     # Uncomment the following line to see raw messages
                     # print(str(full_msg))
@@ -110,7 +93,7 @@ class GuiClient:
                     if msgtype.strip(' ') == 'PK':
                         print(f'PubKey Recieved from server')
                         # Import public key string into RSA key object
-                        srvpubkey = RSA.importKey(full_msg[HEADERLEN:])
+                        srvpubkey = RSA.importKey(full_msg[PySecChat.HEADERLEN:])
                         encryptor = PKCS1_OAEP.new(srvpubkey)
                         self.server.pubkey = encryptor
                         print('Sending ENCTEST message to server')
@@ -120,7 +103,7 @@ class GuiClient:
 
                     # If message is of MSG type
                     elif msgtype.strip(' ') == 'MSG':
-                        decrypted = self.clidecryptor.decrypt(full_msg[HEADERLEN:]).decode('utf-8')
+                        decrypted = self.clidecryptor.decrypt(full_msg[PySecChat.HEADERLEN:]).decode('utf-8')
 
                         if self.server.rsaestablished is False:
                             if decrypted == 'ENCTEST':
