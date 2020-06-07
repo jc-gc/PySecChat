@@ -13,13 +13,15 @@ Usage
 
 To Use:
 
-run python setup.py develop
+#####Run setup.py first
+>python setup.py develop
 
-To run the server - Port is 1252 by default
- python chat_server.py
+#####To run the server - Port is 1252 by default
+>python chat_server.py
 
 To run the GUI Client
- python chat_client-gui.py
+
+>python chat_client-gui.py
 
 Notes
 ======
