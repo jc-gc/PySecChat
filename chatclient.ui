@@ -58,7 +58,7 @@
         </layout>
         <child>
           <object class="ttk.Entry" id="entryMessage">
-              <property name="state">disabled</property>
+            <property name="state">disabled</property>
             <layout manager="pack">
               <property name="expand">true</property>
               <property name="fill">x</property>
@@ -69,122 +69,125 @@
             </layout>
           </object>
         </child>
-          <child>
-              <object class="ttk.Button" id="btnSend">
-                  <property name="command">btnSendClick</property>
-                  <property name="state">disabled</property>
-                  <property name="text" translatable="yes">Send</property>
-                  <layout manager="pack">
-                      <property name="padx">5</property>
-                      <property name="pady">5</property>
-                      <property name="propagate">True</property>
-                      <property name="side">right</property>
-                  </layout>
-              </object>
-          </child>
+        <child>
+          <object class="ttk.Button" id="btnSend">
+            <property name="command">btnSendClick</property>
+            <property name="state">disabled</property>
+            <property name="text" translatable="yes">Send</property>
+            <layout manager="pack">
+              <property name="padx">5</property>
+              <property name="pady">5</property>
+              <property name="propagate">True</property>
+              <property name="side">right</property>
+            </layout>
+          </object>
+        </child>
       </object>
     </child>
-      <child>
-          <object class="ttk.Frame" id="frame_1_3">
-              <property name="height">200</property>
-              <property name="width">200</property>
-              <layout manager="pack">
-                  <property name="fill">both</property>
-                  <property name="propagate">True</property>
-                  <property name="side">top</property>
-              </layout>
-              <child>
-                  <object class="ttk.Label" id="label_2_4">
-                      <property name="text" translatable="yes">IP</property>
-                      <layout manager="pack">
-                          <property name="ipadx">6</property>
-                          <property name="padx">5</property>
-                          <property name="pady">5</property>
-                          <property name="propagate">True</property>
-                          <property name="side">left</property>
-                      </layout>
-                  </object>
-              </child>
-              <child>
-                  <object class="ttk.Entry" id="entryIP">
-                      <layout manager="pack">
-                          <property name="expand">true</property>
-                          <property name="fill">both</property>
-                          <property name="padx">5</property>
-                          <property name="pady">5</property>
-                          <property name="propagate">True</property>
-                          <property name="side">right</property>
-                      </layout>
-                  </object>
-              </child>
+    <child>
+      <object class="ttk.Frame" id="frame_1_3">
+        <property name="height">200</property>
+        <property name="width">200</property>
+        <layout manager="pack">
+          <property name="fill">both</property>
+          <property name="propagate">True</property>
+          <property name="side">top</property>
+        </layout>
+        <child>
+          <object class="ttk.Label" id="label_2_4">
+            <property name="text" translatable="yes">IP</property>
+            <layout manager="pack">
+              <property name="ipadx">6</property>
+              <property name="padx">5</property>
+              <property name="pady">5</property>
+              <property name="propagate">True</property>
+              <property name="side">left</property>
+            </layout>
           </object>
-      </child>
-      <child>
-          <object class="ttk.Frame" id="frame_1">
-              <property name="height">200</property>
-              <property name="width">200</property>
-              <layout manager="pack">
-                  <property name="fill">both</property>
-                  <property name="propagate">True</property>
-                  <property name="side">top</property>
-              </layout>
-              <child>
-                  <object class="ttk.Label" id="label_2">
-                      <property name="text" translatable="yes">Port</property>
-                      <layout manager="pack">
-                          <property name="padx">5</property>
-                          <property name="pady">5</property>
-                          <property name="propagate">True</property>
-                          <property name="side">left</property>
-                      </layout>
-                  </object>
-              </child>
-              <child>
-                  <object class="ttk.Entry" id="entryPort">
-                      <layout manager="pack">
-                          <property name="expand">true</property>
-                          <property name="fill">both</property>
-                          <property name="padx">5</property>
-                          <property name="pady">5</property>
-                          <property name="propagate">True</property>
-                          <property name="side">right</property>
-                      </layout>
-                  </object>
-              </child>
+        </child>
+        <child>
+          <object class="ttk.Entry" id="entryIP">
+            <property name="text" translatable="yes">localhost</property>
+            <layout manager="pack">
+              <property name="expand">true</property>
+              <property name="fill">both</property>
+              <property name="padx">5</property>
+              <property name="pady">5</property>
+              <property name="propagate">True</property>
+              <property name="side">right</property>
+            </layout>
           </object>
-      </child>
-      <child>
-          <object class="ttk.Frame" id="frame_4">
-              <property name="height">200</property>
-              <property name="width">200</property>
-              <layout manager="pack">
-                  <property name="propagate">True</property>
-                  <property name="side">bottom</property>
-              </layout>
-              <child>
-                  <object class="ttk.Button" id="btnConnect">
-                      <property name="command">btnConnectClick</property>
-                      <property name="text" translatable="yes">Connect</property>
-                      <layout manager="pack">
-                          <property name="propagate">True</property>
-                          <property name="side">left</property>
-                      </layout>
-                  </object>
-              </child>
-              <child>
-                  <object class="ttk.Button" id="btnDisconnect">
-                      <property name="command">btnDisconnectCLick</property>
-                      <property name="state">disabled</property>
-                      <property name="text" translatable="yes">Disconnect</property>
-                      <layout manager="pack">
-                          <property name="padx">5</property>
-                          <property name="pady">5</property>
-                          <property name="propagate">True</property>
-                          <property name="side">right</property>
-                      </layout>
-                  </object>
-              </child>
+        </child>
+      </object>
+    </child>
+    <child>
+      <object class="ttk.Frame" id="frame_1">
+        <property name="height">200</property>
+        <property name="width">200</property>
+        <layout manager="pack">
+          <property name="fill">both</property>
+          <property name="propagate">True</property>
+          <property name="side">top</property>
+        </layout>
+        <child>
+          <object class="ttk.Label" id="label_2">
+            <property name="text" translatable="yes">Port</property>
+            <layout manager="pack">
+              <property name="padx">5</property>
+              <property name="pady">5</property>
+              <property name="propagate">True</property>
+              <property name="side">left</property>
+            </layout>
           </object>
-      </child>
+        </child>
+        <child>
+          <object class="ttk.Entry" id="entryPort">
+            <property name="text" translatable="yes">1252</property>
+            <property name="textvariable">int:0</property>
+            <layout manager="pack">
+              <property name="expand">true</property>
+              <property name="fill">both</property>
+              <property name="padx">5</property>
+              <property name="pady">5</property>
+              <property name="propagate">True</property>
+              <property name="side">right</property>
+            </layout>
+          </object>
+        </child>
+      </object>
+    </child>
+    <child>
+      <object class="ttk.Frame" id="frame_4">
+        <property name="height">200</property>
+        <property name="width">200</property>
+        <layout manager="pack">
+          <property name="propagate">True</property>
+          <property name="side">bottom</property>
+        </layout>
+        <child>
+          <object class="ttk.Button" id="btnConnect">
+            <property name="command">btnConnectClick</property>
+            <property name="text" translatable="yes">Connect</property>
+            <layout manager="pack">
+              <property name="propagate">True</property>
+              <property name="side">left</property>
+            </layout>
+          </object>
+        </child>
+        <child>
+          <object class="ttk.Button" id="btnDisconnect">
+            <property name="command">btnDisconnectCLick</property>
+            <property name="state">disabled</property>
+            <property name="text" translatable="yes">Disconnect</property>
+            <layout manager="pack">
+              <property name="padx">5</property>
+              <property name="pady">5</property>
+              <property name="propagate">True</property>
+              <property name="side">right</property>
+            </layout>
+          </object>
+        </child>
+      </object>
+    </child>
   </object>
 </interface>
