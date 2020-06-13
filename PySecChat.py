@@ -5,9 +5,6 @@ HEADERLEN = 8
 
 
 class PySecChat:
-    def __init__(self):
-        pass
-
     def setupMsg(self, msg):
         data = f'{"MSG":<{4}}{len(msg):<{4}}'.encode('utf-8') + msg
         return data
