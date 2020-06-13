@@ -25,7 +25,8 @@ addr = ('0.0.0.0', 1252)
 
 
 class PySecChatServer(PySecChat.PySecChat):
-    def __init__(self):
+    def __init__(self, root):
+        self.tk = root
         self.builder = builder = pygubu.Builder()
         builder.add_resource_path(PROJECT_PATH)
         builder.add_from_file(PROJECT_UI)
@@ -37,10 +38,26 @@ class PySecChatServer(PySecChat.PySecChat):
         self.clilist.configure(yscrollcommand=self.cliscroll.set)
         self.cliscroll.configure(command=self.clilist.yview)
 
+        self.popup_menu = tk.Menu()
+        self.popup_menu.add_command(label="Kick", command=self.kick_client)
+        self.clilist.bind('<Button-3>', self.clilist_context_popup)
+
         self.loglist = builder.get_object('lstboxLog')
         self.logscroll = builder.get_object('scrollLog')
         self.loglist.configure(yscrollcommand=self.logscroll.set)
         self.logscroll.configure(command=self.loglist.yview)
+
+    def kick_client(self):
+        for i in self.clilist.curselection():
+            sel = self.clients[i]
+            sel.disconnect()
+            self.loglist.insert(tk.END, f'Client: {sel.address} was kicked')
+
+    def clilist_context_popup(self, event):
+        try:
+            self.popup_menu.tk_popup(event.x_root, event.y_root, 0)
+        finally:
+            self.popup_menu.grab_release()
 
     class message:
         def __init__(self, msg, msgtype, targets):
@@ -63,10 +80,13 @@ class PySecChatServer(PySecChat.PySecChat):
         def disconnect(self):
             self.connection.close()
 
+        def __str__(self):
+            return f'{self.address}'
+
     def updateCliList(self):
         self.clilist.delete(0, tk.END)
         for client in self.clients:
-            self.clilist.insert(tk.END, f'{client.address} Enc-{client.rsaestablished}')
+            self.clilist.insert(tk.END, client)
 
     def acceptConnections(self):
         while True:
@@ -83,7 +103,8 @@ class PySecChatServer(PySecChat.PySecChat):
     def handleSendQueue(self):
         self.sendqueue = Queue()
         while True:
-            msg = self.sendqueue.get()
+            if self.sendqueue.not_empty:
+                msg = self.sendqueue.get()
             if msg != None:
                 if msg.targets is not None:
                     for target in msg.targets:
@@ -216,5 +237,5 @@ class PySecChatServer(PySecChat.PySecChat):
 
 if __name__ == '__main__':
     root = tk.Tk()
-    app = PySecChatServer()
+    app = PySecChatServer(root)
     app.run()
