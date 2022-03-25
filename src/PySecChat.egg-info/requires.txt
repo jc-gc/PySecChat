@@ -1,0 +1,7 @@
+tkintertable
+pygubu
+pycryptodomex
+
+[testing]
+pytest
+pytest-cov

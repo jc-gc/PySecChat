@@ -4,9 +4,9 @@ PySecChat
 
 Server/Client encrypted chat application
 
-![GUICLient Example](http://johnjoyce.uk/cdn/python_CAbLwh8ciW.png)
+![GUICLient Example](content/client.png)
 
-![Server Example](http://johnjoyce.uk/cdn/python_crkaWsnXJk.png)
+![Server Example](content/server.png)
 
 Usage
 ===========
